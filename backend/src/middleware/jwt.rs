@@ -14,6 +14,7 @@ use crate::error::AppError;
 pub struct Claims {
     pub sub: Uuid,
     pub username: String,
+    pub role: String,
     pub exp: usize,
 }
 

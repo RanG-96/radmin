@@ -20,8 +20,8 @@ pub async fn seed_admin(pool: &PgPool, config: &AppConfig) {
         .expect("Failed to hash admin password");
 
     sqlx::query(
-        r#"INSERT INTO users (id, username, email, password_hash, created_at)
-        VALUES ($1, $2, $3, $4, NOW())"#,
+        r#"INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, 'admin', NOW(), NOW())"#,
     )
     .bind(Uuid::new_v4())
     .bind(&config.admin_username)

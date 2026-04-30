@@ -6,7 +6,7 @@ mod middleware;
 mod model;
 mod service;
 
-use axum::{routing::{get, post}, Router};
+use axum::{routing::{get, post, put, delete}, Router};
 use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -49,9 +49,19 @@ async fn main() {
     };
 
     let app = Router::new()
+        // Auth
         .route("/api/auth/register", post(handler::auth::register))
         .route("/api/auth/login", post(handler::auth::login))
+        // User (self)
         .route("/api/users/me", get(handler::user::me))
+        .route("/api/users/me", put(handler::user::update_me))
+        // Admin: user management
+        .route("/api/admin/users", get(handler::user_admin::list_users))
+        .route("/api/admin/users", post(handler::user_admin::create_user))
+        .route("/api/admin/users/{id}", get(handler::user_admin::get_user))
+        .route("/api/admin/users/{id}", put(handler::user_admin::update_user))
+        .route("/api/admin/users/{id}", delete(handler::user_admin::delete_user))
+        // Health
         .route("/api/health", get(|| async { "ok" }))
         .with_state(state)
         .layer(middleware::cors::cors_layer())

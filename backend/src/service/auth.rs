@@ -13,7 +13,6 @@ pub async fn register(
     config: &AppConfig,
     input: CreateUser,
 ) -> Result<AuthResponse, AppError> {
-    // Check if email already exists
     let existing: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind(&input.email)
         .fetch_one(pool)
@@ -27,9 +26,9 @@ pub async fn register(
         .map_err(|e| AppError::Internal(e.into()))?;
 
     let user = sqlx::query_as::<_, User>(
-        r#"INSERT INTO users (id, username, email, password_hash, created_at)
-        VALUES ($1, $2, $3, $4, NOW())
-        RETURNING id, username, email, password_hash, created_at"#,
+        r#"INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, 'user', NOW(), NOW())
+        RETURNING id, username, email, password_hash, role, is_active, created_at, updated_at"#,
     )
     .bind(uuid::Uuid::new_v4())
     .bind(&input.username)
@@ -53,12 +52,16 @@ pub async fn login(
     input: LoginUser,
 ) -> Result<AuthResponse, AppError> {
     let user = sqlx::query_as::<_, User>(
-        r#"SELECT id, username, email, password_hash, created_at FROM users WHERE email = $1"#,
+        r#"SELECT id, username, email, password_hash, role, is_active, created_at, updated_at FROM users WHERE email = $1"#,
     )
     .bind(&input.email)
     .fetch_optional(pool)
     .await?
     .ok_or_else(|| AppError::Auth("Invalid email or password".into()))?;
+
+    if !user.is_active {
+        return Err(AppError::Auth("Account is deactivated".into()));
+    }
 
     let valid = verify(&input.password, &user.password_hash)
         .map_err(|e| AppError::Internal(e.into()))?;
@@ -83,6 +86,7 @@ fn generate_token(user: &User, config: &AppConfig) -> Result<String, AppError> {
     let claims = Claims {
         sub: user.id,
         username: user.username.clone(),
+        role: user.role.clone(),
         exp: expiration.timestamp() as usize,
     };
 
