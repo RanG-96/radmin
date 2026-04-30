@@ -40,6 +40,9 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
+    // Seed default admin
+    service::seed::seed_admin(&pool, &config).await;
+
     let state = AppState {
         pool,
         config,

@@ -6,6 +6,9 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub jwt_expiration_hours: u64,
     pub server_port: u16,
+    pub admin_username: String,
+    pub admin_email: String,
+    pub admin_password: String,
 }
 
 impl AppConfig {
@@ -21,6 +24,9 @@ impl AppConfig {
                 .unwrap_or_else(|_| "3000".into())
                 .parse()
                 .expect("SERVER_PORT must be a number"),
+            admin_username: env::var("ADMIN_USERNAME").unwrap_or_else(|_| "admin".into()),
+            admin_email: env::var("ADMIN_EMAIL").unwrap_or_else(|_| "admin@example.com".into()),
+            admin_password: env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".into()),
         }
     }
 }
