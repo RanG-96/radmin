@@ -1,6 +1,8 @@
 import { Navigate, Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
+import { Avatar, AvatarFallback } from '../components/ui/Avatar';
+import { Separator } from '../components/ui/Separator';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4' },
@@ -36,9 +38,10 @@ export function MainLayout() {
     <div className="flex h-screen bg-[var(--color-bg-secondary)]">
       {/* Sidebar */}
       <aside className="flex w-60 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg)]">
-        <div className="flex h-14 items-center px-5 border-b border-[var(--color-border)]">
+        <div className="flex h-14 items-center px-5">
           <h1 className="text-lg font-semibold text-[var(--color-text)]">Radmin</h1>
         </div>
+        <Separator />
         <nav className="flex-1 px-3 py-4">
           {filteredNav.map((item) => (
             <NavLink
@@ -58,9 +61,17 @@ export function MainLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="border-t border-[var(--color-border)] p-4">
-          <div className="mb-2 text-sm font-medium text-[var(--color-text)]">{user.username}</div>
-          <div className="mb-3 text-xs text-[var(--color-text-secondary)]">{user.email}</div>
+        <Separator />
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Avatar>
+              <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="text-sm font-medium text-[var(--color-text)]">{user.username}</div>
+              <div className="text-xs text-[var(--color-text-secondary)]">{user.email}</div>
+            </div>
+          </div>
           <Button variant="ghost" size="sm" onClick={logout} className="w-full">
             Logout
           </Button>

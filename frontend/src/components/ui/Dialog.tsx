@@ -35,7 +35,6 @@ function DialogContent({ className = '', children, ...props }: DialogPrimitive.D
             <path d="M18 6 6 18" /><path d="m6 6 12 12" />
           </svg>
         </DialogPrimitive.Close>
-        {children}
       </DialogPrimitive.Content>
     </DialogPortal>
   );

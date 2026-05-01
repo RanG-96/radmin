@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, type User, type AdminCreateUserInput, type UpdateUserInput } from '../lib/api';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
+import { FormSelect } from '../components/ui/Select';
+import { FormCheckbox } from '../components/ui/Checkbox';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '../components/ui/AlertDialog';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../components/ui/DropdownMenu';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
@@ -38,12 +40,13 @@ function UserForm({ user, onSubmit, onCancel }: {
       <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
       <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       {!user && <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />}
-      <Select label="Role" value={role} onChange={(e) => setRole(e.target.value)} options={roleOptions} />
+      <FormSelect label="Role" value={role} onValueChange={setRole} options={roleOptions} />
       {user && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" />
-          Active
-        </label>
+        <FormCheckbox
+          label="Active"
+          checked={isActive}
+          onCheckedChange={setIsActive}
+        />
       )}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
@@ -59,6 +62,7 @@ export function Users() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search],
@@ -92,7 +96,14 @@ export function Users() {
     if (editingUser) updateMutation.mutate({ id: editingUser.id, data });
   };
   const handleDelete = (user: User) => {
-    if (confirm(`Delete user "${user.username}"?`)) deleteMutation.mutate(user.id);
+    setDeleteTarget(user);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget) {
+      deleteMutation.mutate(deleteTarget.id);
+      setDeleteTarget(null);
+    }
   };
 
   const openCreate = () => { setEditingUser(null); setDialogOpen(true); };
@@ -191,6 +202,23 @@ export function Users() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete user &ldquo;{deleteTarget?.username}&rdquo;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-[var(--color-error)] hover:bg-[var(--color-error)]/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react';
+import * as LabelPrimitive from '@radix-ui/react-label';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -10,9 +11,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="grid gap-1.5">
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-[var(--color-text)]">
+          <LabelPrimitive.Root htmlFor={id} className="text-sm font-medium text-[var(--color-text)]">
             {label}
-          </label>
+          </LabelPrimitive.Root>
         )}
         <input
           ref={ref}
