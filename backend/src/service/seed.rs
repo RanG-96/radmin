@@ -16,8 +16,8 @@ pub async fn seed_admin(pool: &PgPool, config: &AppConfig) {
         return;
     }
 
-    let password_hash = hash(&config.admin_password, DEFAULT_COST)
-        .expect("Failed to hash admin password");
+    let password_hash =
+        hash(&config.admin_password, DEFAULT_COST).expect("Failed to hash admin password");
 
     sqlx::query(
         r#"INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at)

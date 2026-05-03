@@ -9,6 +9,7 @@ pub struct AppConfig {
     pub admin_username: String,
     pub admin_email: String,
     pub admin_password: String,
+    pub upload_dir: String,
 }
 
 impl AppConfig {
@@ -27,6 +28,7 @@ impl AppConfig {
             admin_username: env::var("ADMIN_USERNAME").unwrap_or_else(|_| "admin".into()),
             admin_email: env::var("ADMIN_EMAIL").unwrap_or_else(|_| "admin@example.com".into()),
             admin_password: env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".into()),
+            upload_dir: env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".into()),
         }
     }
 }

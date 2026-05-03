@@ -1,9 +1,9 @@
 use axum::{extract::State, Json};
 
-use crate::AppState;
 use crate::error::AppError;
 use crate::model::user::{AuthResponse, CreateUser, LoginUser};
 use crate::service::auth;
+use crate::AppState;
 
 pub async fn register(
     State(state): State<AppState>,
@@ -13,7 +13,9 @@ pub async fn register(
         return Err(AppError::Validation("All fields are required".into()));
     }
     if input.password.len() < 6 {
-        return Err(AppError::Validation("Password must be at least 6 characters".into()));
+        return Err(AppError::Validation(
+            "Password must be at least 6 characters".into(),
+        ));
     }
 
     let response = auth::register(&state.pool, &state.config, input).await?;

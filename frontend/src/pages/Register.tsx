@@ -18,8 +18,9 @@ export function Register() {
     setLoading(true);
     try {
       await register({ username, email, password });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setError(axiosErr.response?.data?.error || '注册失败');
     } finally {
       setLoading(false);
     }
@@ -29,32 +30,32 @@ export function Register() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg-secondary)]">
       <div className="w-full max-w-sm rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-8 shadow-sm">
         <h2 className="mb-6 text-center text-2xl font-semibold text-[var(--color-text)]">
-          Create Account
+          注册
         </h2>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <Input
             id="username"
-            label="Username"
+            label="用户名"
             type="text"
-            placeholder="Your name"
+            placeholder="请输入用户名"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
           <Input
             id="email"
-            label="Email"
+            label="邮箱"
             type="email"
-            placeholder="you@example.com"
+            placeholder="请输入邮箱"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           <Input
             id="password"
-            label="Password"
+            label="密码"
             type="password"
-            placeholder="Min 6 characters"
+            placeholder="至少6个字符"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -64,13 +65,13 @@ export function Register() {
             <p className="rounded bg-red-50 p-2 text-sm text-[var(--color-error)]">{error}</p>
           )}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {loading ? '注册中...' : '注册'}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-[var(--color-text-secondary)]">
-          Already have an account?{' '}
+          已有账号？{' '}
           <Link to="/login" className="text-[var(--color-primary)] hover:underline">
-            Sign In
+            登录
           </Link>
         </p>
       </div>

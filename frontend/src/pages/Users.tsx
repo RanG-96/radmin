@@ -1,23 +1,34 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, type User, type AdminCreateUserInput, type UpdateUserInput } from '../lib/api';
+import { getApiErrorMessage } from '../lib/error';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormSelect } from '../components/ui/Select';
 import { FormCheckbox } from '../components/ui/Checkbox';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '../components/ui/AlertDialog';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../components/ui/DropdownMenu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
+import { Pagination } from '../components/ui/Pagination';
+import { EmptyState, LoadingState } from '../components/ui/EmptyState';
 
 const roleOptions = [
-  { value: 'user', label: 'User' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'user', label: '普通用户' },
+  { value: 'admin', label: '管理员' },
 ];
 
-function UserForm({ user, onSubmit, onCancel }: {
+interface UserFormValues {
+  username: string;
+  email: string;
+  password?: string;
+  role: string;
+  is_active?: boolean;
+}
+
+function UserForm({ user, errorMessage, onSubmit, onCancel }: {
   user?: User;
-  onSubmit: (data: any) => void;
+  errorMessage?: string | null;
+  onSubmit: (data: UserFormValues) => void;
   onCancel: () => void;
 }) {
   const [username, setUsername] = useState(user?.username || '');
@@ -37,20 +48,21 @@ function UserForm({ user, onSubmit, onCancel }: {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
-      <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-      <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      {!user && <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />}
-      <FormSelect label="Role" value={role} onValueChange={setRole} options={roleOptions} />
+      <Input label="用户名" value={username} onChange={(e) => setUsername(e.target.value)} required />
+      <Input label="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      {!user && <Input label="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />}
+      <FormSelect label="角色" value={role} onValueChange={setRole} options={roleOptions} />
       {user && (
         <FormCheckbox
-          label="Active"
+          label="启用"
           checked={isActive}
           onCheckedChange={setIsActive}
         />
       )}
+      {errorMessage && <p className="text-sm text-[var(--color-error)]">{errorMessage}</p>}
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">{user ? 'Save' : 'Create'}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>取消</Button>
+        <Button type="submit">{user ? '保存' : '创建'}</Button>
       </div>
     </form>
   );
@@ -63,6 +75,8 @@ export function Users() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search],
@@ -74,7 +88,10 @@ export function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setDialogOpen(false);
+      setFormError(null);
+      setPageError(null);
     },
+    onError: (error) => setFormError(getApiErrorMessage(error, '创建用户失败')),
   });
 
   const updateMutation = useMutation({
@@ -83,20 +100,34 @@ export function Users() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setDialogOpen(false);
       setEditingUser(null);
+      setFormError(null);
+      setPageError(null);
     },
+    onError: (error) => setFormError(getApiErrorMessage(error, '更新用户失败')),
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      adminApi.updateUser(id, { is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setPageError(null);
+    },
+    onError: (error) => setPageError(getApiErrorMessage(error, '更新用户状态失败')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteUser(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setPageError(null);
+    },
+    onError: (error) => setPageError(getApiErrorMessage(error, '删除用户失败')),
   });
 
-  const handleCreate = (data: AdminCreateUserInput) => createMutation.mutate(data);
+  const handleCreate = (data: UserFormValues) => createMutation.mutate(data as AdminCreateUserInput);
   const handleUpdate = (data: UpdateUserInput) => {
     if (editingUser) updateMutation.mutate({ id: editingUser.id, data });
-  };
-  const handleDelete = (user: User) => {
-    setDeleteTarget(user);
   };
 
   const confirmDelete = () => {
@@ -106,53 +137,62 @@ export function Users() {
     }
   };
 
-  const openCreate = () => { setEditingUser(null); setDialogOpen(true); };
-  const openEdit = (user: User) => { setEditingUser(user); setDialogOpen(true); };
+  const openCreate = useCallback(() => {
+    setEditingUser(null);
+    setFormError(null);
+    setDialogOpen(true);
+  }, []);
 
-  const totalPages = data ? Math.ceil(data.total / data.per_page) : 0;
+  const openEdit = useCallback((user: User) => {
+    setEditingUser(user);
+    setFormError(null);
+    setDialogOpen(true);
+  }, []);
+
+  const handleToggleStatus = useCallback((user: User) => {
+    setPageError(null);
+    toggleStatusMutation.mutate({ id: user.id, is_active: !user.is_active });
+  }, [toggleStatusMutation]);
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-[var(--color-text)]">Users</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate}>New User</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingUser ? 'Edit User' : 'New User'}</DialogTitle>
-            </DialogHeader>
-            <UserForm
-              user={editingUser || undefined}
-              onSubmit={editingUser ? handleUpdate : handleCreate}
-              onCancel={() => { setDialogOpen(false); setEditingUser(null); }}
-            />
-          </DialogContent>
-        </Dialog>
+      <div className="flex items-center justify-between gap-4">
+        <div className="grid gap-1">
+          <h2 className="text-2xl font-semibold text-[var(--color-text)]">用户管理</h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            管理登录账号、角色权限和启用状态。常用操作已直接显示在列表中。
+          </p>
+        </div>
+        <Button onClick={openCreate}>新增用户</Button>
       </div>
+
+      {pageError && (
+        <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
+          {pageError}
+        </div>
+      )}
 
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
         <div className="border-b border-[var(--color-border)] p-4">
-          <Input placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
+          <Input placeholder="搜索用户..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
         </div>
 
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead>用户名</TableHead>
+              <TableHead>邮箱</TableHead>
+              <TableHead>角色</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead>创建时间</TableHead>
+              <TableHead className="min-w-[220px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-[var(--color-text-secondary)]">Loading...</TableCell></TableRow>
+              <LoadingState colSpan={6} />
             ) : data?.data.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-[var(--color-text-secondary)]">No users found</TableCell></TableRow>
+              <EmptyState message="暂无用户" colSpan={6} />
             ) : (
               data?.data.map((user) => (
                 <TableRow key={user.id}>
@@ -160,28 +200,30 @@ export function Users() {
                   <TableCell className="text-[var(--color-text-secondary)]">{user.email}</TableCell>
                   <TableCell>
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {user.role}
+                      {user.role === 'admin' ? '管理员' : '普通用户'}
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                      {user.is_active ? '启用' : '禁用'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-[var(--color-text-secondary)]">{new Date(user.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01" /></svg>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(user)}>Edit</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(user)} className="text-[var(--color-error)]">Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="text-[var(--color-text-secondary)]">{new Date(user.created_at).toLocaleDateString('zh-CN')}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => openEdit(user)}>编辑</Button>
+                      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleToggleStatus(user)}>
+                        {user.is_active ? '禁用' : '启用'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="shrink-0 text-[var(--color-error)] hover:text-[var(--color-error)]"
+                        onClick={() => setDeleteTarget(user)}
+                      >
+                        删除
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -189,32 +231,43 @@ export function Users() {
           </TableBody>
         </Table>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 py-3">
-            <span className="text-sm text-[var(--color-text-secondary)]">
-              {data?.total} users total
-            </span>
-            <div className="flex gap-1">
-              <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Prev</Button>
-              <span className="flex items-center px-3 text-sm text-[var(--color-text-secondary)]">{page} / {totalPages}</span>
-              <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
-            </div>
-          </div>
+        {data && (
+          <Pagination
+            page={page}
+            total={data.total}
+            perPage={data.per_page}
+            onPageChange={setPage}
+          />
         )}
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingUser ? '编辑用户' : '新增用户'}</DialogTitle>
+          </DialogHeader>
+          <UserForm
+            key={editingUser?.id ?? 'create'}
+            user={editingUser || undefined}
+            errorMessage={formError}
+            onSubmit={editingUser ? handleUpdate : handleCreate}
+            onCancel={() => { setDialogOpen(false); setEditingUser(null); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>删除用户</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete user &ldquo;{deleteTarget?.username}&rdquo;? This action cannot be undone.
+              确定要删除用户 &ldquo;{deleteTarget?.username}&rdquo; 吗？此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-[var(--color-error)] hover:bg-[var(--color-error)]/90">
-              Delete
+              删除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

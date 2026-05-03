@@ -1,10 +1,10 @@
 use axum::{extract::State, Json};
 use bcrypt::{hash, DEFAULT_COST};
 
-use crate::AppState;
 use crate::error::AppError;
 use crate::middleware::jwt::Claims;
 use crate::model::user::{UpdateMe, User, UserResponse};
+use crate::AppState;
 
 pub async fn me(
     State(state): State<AppState>,
@@ -43,7 +43,9 @@ pub async fn update_me(
 
     let password_hash = if let Some(password) = &input.password {
         if password.len() < 6 {
-            return Err(AppError::Validation("Password must be at least 6 characters".into()));
+            return Err(AppError::Validation(
+                "Password must be at least 6 characters".into(),
+            ));
         }
         Some(hash(password, DEFAULT_COST).map_err(|e| AppError::Internal(e.into()))?)
     } else {

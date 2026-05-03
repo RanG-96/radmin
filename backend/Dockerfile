@@ -1,5 +1,6 @@
 # Build stage
-FROM rust:1.88-bookworm as builder
+ARG IMAGE_REGISTRY=""
+FROM ${IMAGE_REGISTRY}rust:1.88-bookworm AS builder
 
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
@@ -9,7 +10,7 @@ COPY migrations ./migrations
 RUN cargo build --release
 
 # Runtime stage
-FROM debian:bookworm-slim
+FROM ${IMAGE_REGISTRY}debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 

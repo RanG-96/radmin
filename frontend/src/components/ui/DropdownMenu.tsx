@@ -25,7 +25,7 @@ function DropdownMenuContent({ className = '', children, ...props }: DropdownMen
 function DropdownMenuItem({ className = '', children, ...props }: DropdownMenuPrimitive.DropdownMenuItemProps) {
   return (
     <DropdownMenuPrimitive.Item
-      className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-[var(--color-bg-secondary)] focus:bg-[var(--color-bg-secondary)] ${className}`}
+      className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm text-[var(--color-text)] outline-none transition-colors hover:bg-[var(--color-bg-secondary)] focus:bg-[var(--color-bg-secondary)] ${className}`}
       {...props}
     >
       {children}

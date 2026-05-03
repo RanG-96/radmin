@@ -22,8 +22,8 @@ pub async fn register(
         return Err(AppError::Validation("Email already registered".into()));
     }
 
-    let password_hash = hash(&input.password, DEFAULT_COST)
-        .map_err(|e| AppError::Internal(e.into()))?;
+    let password_hash =
+        hash(&input.password, DEFAULT_COST).map_err(|e| AppError::Internal(e.into()))?;
 
     let user = sqlx::query_as::<_, User>(
         r#"INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at)
@@ -63,8 +63,8 @@ pub async fn login(
         return Err(AppError::Auth("Account is deactivated".into()));
     }
 
-    let valid = verify(&input.password, &user.password_hash)
-        .map_err(|e| AppError::Internal(e.into()))?;
+    let valid =
+        verify(&input.password, &user.password_hash).map_err(|e| AppError::Internal(e.into()))?;
 
     if !valid {
         return Err(AppError::Auth("Invalid email or password".into()));
@@ -80,8 +80,7 @@ pub async fn login(
 }
 
 fn generate_token(user: &User, config: &AppConfig) -> Result<String, AppError> {
-    let expiration = Utc::now()
-        + Duration::hours(config.jwt_expiration_hours as i64);
+    let expiration = Utc::now() + Duration::hours(config.jwt_expiration_hours as i64);
 
     let claims = Claims {
         sub: user.id,

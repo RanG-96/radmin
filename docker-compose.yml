@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${IMAGE_REGISTRY:-}postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -19,6 +19,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        IMAGE_REGISTRY: ${IMAGE_REGISTRY:-}
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-my_admin}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-secret-key}
@@ -35,6 +37,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        IMAGE_REGISTRY: ${IMAGE_REGISTRY:-}
     ports:
       - "80:80"
     depends_on:

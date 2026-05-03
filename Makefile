@@ -2,8 +2,7 @@
 
 # Development
 dev:
-	@echo "Starting dev environment..."
-	docker compose up -d postgres
+	@echo "Starting local development environment..."
 	cd backend && cargo run &
 	cd frontend && npm run dev &
 

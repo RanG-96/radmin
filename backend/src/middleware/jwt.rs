@@ -1,11 +1,8 @@
-use std::future::Future;
-use axum::{
-    extract::FromRequestParts,
-    http::request::Parts,
-};
 use axum::http::header::AUTHORIZATION;
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use axum::{extract::FromRequestParts, http::request::Parts};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use std::future::Future;
 use uuid::Uuid;
 
 use crate::error::AppError;
@@ -35,8 +32,8 @@ where
             .map(|s| s.to_string());
 
         async move {
-            let auth_header = auth_header
-                .ok_or_else(|| AppError::Auth("Missing Authorization header".into()))?;
+            let auth_header =
+                auth_header.ok_or_else(|| AppError::Auth("Missing Authorization header".into()))?;
 
             let token = auth_header
                 .strip_prefix("Bearer ")

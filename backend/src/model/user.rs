@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
@@ -15,24 +16,32 @@ pub struct User {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct CreateUser {
+    #[validate(length(min = 2, message = "用户名至少需要 2 个字符"))]
     pub username: String,
+    #[validate(email(message = "请输入有效邮箱"))]
     pub email: String,
+    #[validate(length(min = 6, message = "密码至少需要 6 个字符"))]
     pub password: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct AdminCreateUser {
+    #[validate(length(min = 2, message = "用户名至少需要 2 个字符"))]
     pub username: String,
+    #[validate(email(message = "请输入有效邮箱"))]
     pub email: String,
+    #[validate(length(min = 6, message = "密码至少需要 6 个字符"))]
     pub password: String,
     pub role: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct UpdateUser {
+    #[validate(length(min = 2, message = "用户名至少需要 2 个字符"))]
     pub username: Option<String>,
+    #[validate(email(message = "请输入有效邮箱"))]
     pub email: Option<String>,
     pub role: Option<String>,
     pub is_active: Option<bool>,

@@ -1,5 +1,6 @@
 # Build stage
-FROM node:20-alpine as builder
+ARG IMAGE_REGISTRY=""
+FROM ${IMAGE_REGISTRY}node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -10,7 +11,7 @@ COPY . .
 RUN yarn build
 
 # Runtime stage
-FROM nginx:alpine
+FROM ${IMAGE_REGISTRY}nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
