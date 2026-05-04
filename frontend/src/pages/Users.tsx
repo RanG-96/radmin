@@ -7,10 +7,15 @@ import { Input } from '../components/ui/Input';
 import { FormSelect } from '../components/ui/Select';
 import { FormCheckbox } from '../components/ui/Checkbox';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '../components/ui/AlertDialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/Table';
 import { Pagination } from '../components/ui/Pagination';
 import { EmptyState, LoadingState } from '../components/ui/EmptyState';
+import { PageHeader } from '../components/crud/PageHeader';
+import { FilterBar } from '../components/crud/FilterBar';
+import { DataTable } from '../components/crud/DataTable';
+import { RowActions } from '../components/crud/RowActions';
+import { FormDialog } from '../components/crud/FormDialog';
+import { StatusBadge } from '../components/crud/StatusBadge';
 
 const roleOptions = [
   { value: 'user', label: '普通用户' },
@@ -156,15 +161,11 @@ export function Users() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="grid gap-1">
-          <h2 className="text-2xl font-semibold text-[var(--color-text)]">用户管理</h2>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            管理登录账号、角色权限和启用状态。常用操作已直接显示在列表中。
-          </p>
-        </div>
-        <Button onClick={openCreate}>新增用户</Button>
-      </div>
+      <PageHeader
+        title="用户管理"
+        description="管理登录账号、角色权限和启用状态。常用操作已直接显示在列表中。"
+        actions={<Button onClick={openCreate}>新增用户</Button>}
+      />
 
       {pageError && (
         <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
@@ -172,11 +173,29 @@ export function Users() {
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
-        <div className="border-b border-[var(--color-border)] p-4">
-          <Input placeholder="搜索用户..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
-        </div>
-
+      <DataTable
+        filter={(
+          <FilterBar>
+            <Input
+              placeholder="搜索用户..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="max-w-sm"
+            />
+          </FilterBar>
+        )}
+        pagination={data && (
+          <Pagination
+            page={page}
+            total={data.total}
+            perPage={data.per_page}
+            onPageChange={setPage}
+          />
+        )}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -199,18 +218,18 @@ export function Users() {
                   <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell className="text-[var(--color-text-secondary)]">{user.email}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <StatusBadge tone={user.role === 'admin' ? 'accent' : 'neutral'}>
                       {user.role === 'admin' ? '管理员' : '普通用户'}
-                    </span>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    <StatusBadge tone={user.is_active ? 'success' : 'danger'}>
                       {user.is_active ? '启用' : '禁用'}
-                    </span>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="text-[var(--color-text-secondary)]">{new Date(user.created_at).toLocaleDateString('zh-CN')}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <RowActions>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => openEdit(user)}>编辑</Button>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleToggleStatus(user)}>
                         {user.is_active ? '禁用' : '启用'}
@@ -223,38 +242,28 @@ export function Users() {
                       >
                         删除
                       </Button>
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+      </DataTable>
 
-        {data && (
-          <Pagination
-            page={page}
-            total={data.total}
-            perPage={data.per_page}
-            onPageChange={setPage}
-          />
-        )}
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingUser ? '编辑用户' : '新增用户'}</DialogTitle>
-          </DialogHeader>
-          <UserForm
-            key={editingUser?.id ?? 'create'}
-            user={editingUser || undefined}
-            errorMessage={formError}
-            onSubmit={editingUser ? handleUpdate : handleCreate}
-            onCancel={() => { setDialogOpen(false); setEditingUser(null); }}
-          />
-        </DialogContent>
-      </Dialog>
+      <FormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={editingUser ? '编辑用户' : '新增用户'}
+      >
+        <UserForm
+          key={editingUser?.id ?? 'create'}
+          user={editingUser || undefined}
+          errorMessage={formError}
+          onSubmit={editingUser ? handleUpdate : handleCreate}
+          onCancel={() => { setDialogOpen(false); setEditingUser(null); }}
+        />
+      </FormDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent>

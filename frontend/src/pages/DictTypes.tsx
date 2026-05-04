@@ -7,10 +7,15 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormCheckbox } from '../components/ui/Checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { Dialog, DialogContent, DialogTitle } from '../components/ui/Dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/AlertDialog';
 import { Pagination } from '../components/ui/Pagination';
 import { EmptyState, LoadingState } from '../components/ui/EmptyState';
+import { PageHeader } from '../components/crud/PageHeader';
+import { FilterBar } from '../components/crud/FilterBar';
+import { DataTable } from '../components/crud/DataTable';
+import { RowActions } from '../components/crud/RowActions';
+import { FormDialog } from '../components/crud/FormDialog';
+import { StatusBadge } from '../components/crud/StatusBadge';
 
 interface DictTypeFormValues {
   name: string;
@@ -181,15 +186,11 @@ export function DictTypes() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="grid gap-1">
-          <h2 className="text-2xl font-semibold text-[var(--color-text)]">选项配置</h2>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            用来管理表单中的下拉选项、状态选项和枚举配置。先创建一个选项组，再为它添加可选项。
-          </p>
-        </div>
-        <Button onClick={openCreate}>新增选项组</Button>
-      </div>
+      <PageHeader
+        title="选项配置"
+        description="用来管理表单中的下拉选项、状态选项和枚举配置。先创建一个选项组，再为它添加可选项。"
+        actions={<Button onClick={openCreate}>新增选项组</Button>}
+      />
 
       {pageError && (
         <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
@@ -197,15 +198,29 @@ export function DictTypes() {
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
-        <div className="border-b border-[var(--color-border)] p-3">
-          <Input
-            placeholder="搜索..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="max-w-sm"
+      <DataTable
+        filter={(
+          <FilterBar>
+            <Input
+              placeholder="搜索..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="max-w-sm"
+            />
+          </FilterBar>
+        )}
+        pagination={data && (
+          <Pagination
+            page={page}
+            total={data.total}
+            perPage={data.per_page}
+            onPageChange={setPage}
           />
-        </div>
+        )}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -230,12 +245,12 @@ export function DictTypes() {
                   <TableCell className="text-[var(--color-text-secondary)]">{dt.item_count}</TableCell>
                   <TableCell className="text-[var(--color-text-secondary)]">{dt.remark ?? '-'}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${dt.status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <StatusBadge tone={dt.status ? 'success' : 'neutral'}>
                       {dt.status ? '启用' : '禁用'}
-                    </span>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <RowActions>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => navigate(`/dict-items/${dt.id}`)}>管理选项</Button>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => openEdit(dt)}>编辑</Button>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleToggleStatus(dt)}>
@@ -251,36 +266,28 @@ export function DictTypes() {
                       >
                         删除
                       </Button>
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+      </DataTable>
 
-        {data && (
-          <Pagination
-            page={page}
-            total={data.total}
-            perPage={data.per_page}
-            onPageChange={setPage}
-          />
-        )}
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogTitle>{editing ? '编辑选项组' : '新增选项组'}</DialogTitle>
-          <DictTypeForm
-            key={editing?.id ?? 'create'}
-            dictType={editing ?? undefined}
-            errorMessage={formError}
-            onSubmit={handleSubmit}
-            onCancel={() => { setDialogOpen(false); setEditing(null); }}
-          />
-        </DialogContent>
-      </Dialog>
+      <FormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={editing ? '编辑选项组' : '新增选项组'}
+      >
+        <DictTypeForm
+          key={editing?.id ?? 'create'}
+          dictType={editing ?? undefined}
+          errorMessage={formError}
+          onSubmit={handleSubmit}
+          onCancel={() => { setDialogOpen(false); setEditing(null); }}
+        />
+      </FormDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>

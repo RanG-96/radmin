@@ -26,6 +26,8 @@
 - 本地优先开发改造：Makefile 与 README 已切换为本地 PostgreSQL 主路径
 - 选项配置文档闭环：已补管理员使用说明与开发者消费说明
 - 收尾清理方案确认：采用“最小运行时清理 + 精确暂存提交”
+- 轻量脚手架可扩展性重构方案确认：采用“CRUD 组合组件 -> 统一表单 -> API 分模块 -> 后端路由拆分”的渐进式顺序
+- 轻量脚手架可扩展性重构设计文档与实施计划已补齐
 
 ## ⏳ 待完成
 
@@ -33,3 +35,7 @@
 - 选项配置人工回归：在真实页面确认启停、删除门禁和错误提示符合预期
 - 迁移风险检查：上线前确认现网不存在同选项组下重复 `value` 的历史数据
 - Docker 整栈构建验证：使用 `IMAGE_REGISTRY=docker.1ms.run/library/` 执行 `docker compose up --build`
+- CRUD 组合组件落地：补 `PageHeader`、`FilterBar`、`DataTable`、`RowActions`、`FormDialog`、`StatusBadge`
+- 统一表单方案落地：补齐 `Textarea`、字段容器、错误映射和提交态收敛
+- 前端 API 分模块：将 `frontend/src/lib/api.ts` 拆成 `http.ts + types/ + api/`
+- 后端路由拆分：将 `backend/src/main.rs` 的路由注册按领域迁到 `backend/src/router/`

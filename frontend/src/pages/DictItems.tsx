@@ -7,9 +7,13 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormCheckbox } from '../components/ui/Checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
-import { Dialog, DialogContent, DialogTitle } from '../components/ui/Dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/AlertDialog';
 import { EmptyState, LoadingState } from '../components/ui/EmptyState';
+import { PageHeader } from '../components/crud/PageHeader';
+import { DataTable } from '../components/crud/DataTable';
+import { RowActions } from '../components/crud/RowActions';
+import { FormDialog } from '../components/crud/FormDialog';
+import { StatusBadge } from '../components/crud/StatusBadge';
 
 interface DictItemFormValues {
   dict_type_id: string;
@@ -203,24 +207,26 @@ export function DictItems() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/dict-types')}>
-            返回
-          </Button>
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">选项配置</p>
-            <h2 className="text-2xl font-semibold text-[var(--color-text)]">管理可选项</h2>
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              {isTypeLoading
-                ? '正在加载所属选项组...'
-                : dictType
-                  ? `${dictType.name} · ${dictType.remark ?? '用于表单和状态选择'} · 系统编码：${dictType.type_code}`
-                  : typeId}
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate}>新增可选项</Button>
+      <div className="grid gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          onClick={() => navigate('/dict-types')}
+        >
+          返回
+        </Button>
+        <PageHeader
+          title="管理可选项"
+          description={
+            isTypeLoading
+              ? '正在加载所属选项组...'
+              : dictType
+                ? `${dictType.name} · ${dictType.remark ?? '用于表单和状态选择'} · 系统编码：${dictType.type_code}`
+                : typeId
+          }
+          actions={<Button onClick={openCreate}>新增可选项</Button>}
+        />
       </div>
 
       {pageError && (
@@ -229,7 +235,7 @@ export function DictItems() {
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)]">
+      <DataTable>
         <Table>
           <TableHeader>
             <TableRow>
@@ -252,39 +258,40 @@ export function DictItems() {
                   <TableCell className="font-mono text-sm text-[var(--color-text-secondary)]">{item.value}</TableCell>
                   <TableCell className="text-[var(--color-text-secondary)]">{item.sort_order}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${item.status ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <StatusBadge tone={item.status ? 'success' : 'neutral'}>
                       {item.status ? '启用' : '禁用'}
-                    </span>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <RowActions>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => openEdit(item)}>编辑</Button>
                       <Button variant="secondary" size="sm" className="shrink-0" onClick={() => handleToggleStatus(item)}>
                         {item.status ? '禁用' : '启用'}
                       </Button>
                       <Button variant="secondary" size="sm" className="shrink-0 text-[var(--color-error)] hover:text-[var(--color-error)]" onClick={() => setDeleteTarget(item)}>删除</Button>
-                    </div>
+                    </RowActions>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-      </div>
+      </DataTable>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogTitle>{editing ? '编辑可选项' : '新增可选项'}</DialogTitle>
-          <DictItemForm
-            key={editing?.id ?? 'create'}
-            item={editing ?? undefined}
-            dictTypeId={typeId!}
-            errorMessage={formError}
-            onSubmit={handleSubmit}
-            onCancel={() => { setDialogOpen(false); setEditing(null); }}
-          />
-        </DialogContent>
-      </Dialog>
+      <FormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title={editing ? '编辑可选项' : '新增可选项'}
+      >
+        <DictItemForm
+          key={editing?.id ?? 'create'}
+          item={editing ?? undefined}
+          dictTypeId={typeId!}
+          errorMessage={formError}
+          onSubmit={handleSubmit}
+          onCancel={() => { setDialogOpen(false); setEditing(null); }}
+        />
+      </FormDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
