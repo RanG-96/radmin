@@ -1,7 +1,8 @@
 import { useAuth } from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
 import { useQuery } from '@tanstack/react-query';
-import { adminApi, notificationsApi } from '../lib/api';
+import { notificationsApi } from '../lib/api/notifications';
+import { adminApi } from '../lib/api/users';
 import { NavLink } from 'react-router-dom';
 
 export function Dashboard() {

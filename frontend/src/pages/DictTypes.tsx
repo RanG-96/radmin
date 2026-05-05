@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { dictApi, type DictType, type CreateDictTypeInput, type UpdateDictTypeInput } from '../lib/api';
-import { getApiErrorMessage } from '../lib/error';
+import { dictApi } from '../lib/api/dict';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormCheckbox } from '../components/ui/Checkbox';
+import { Textarea } from '../components/ui/Textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/AlertDialog';
 import { Pagination } from '../components/ui/Pagination';
@@ -16,6 +16,8 @@ import { DataTable } from '../components/crud/DataTable';
 import { RowActions } from '../components/crud/RowActions';
 import { FormDialog } from '../components/crud/FormDialog';
 import { StatusBadge } from '../components/crud/StatusBadge';
+import { useFormError } from '../hooks/useFormError';
+import type { CreateDictTypeInput, DictType, UpdateDictTypeInput } from '../lib/types/dict';
 
 interface DictTypeFormValues {
   name: string;
@@ -29,11 +31,13 @@ function DictTypeForm({
   errorMessage,
   onSubmit,
   onCancel,
+  isSubmitting,
 }: {
   dictType?: DictType;
   errorMessage?: string | null;
   onSubmit: (data: DictTypeFormValues) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }) {
   const [name, setName] = useState(dictType?.name ?? '');
   const [typeCode, setTypeCode] = useState(dictType?.type_code ?? '');
@@ -47,25 +51,22 @@ function DictTypeForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">选项组名称</label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：性别、用户状态、订单状态" required />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">系统编码</label>
-        <Input
-          value={typeCode}
-          onChange={(e) => setTypeCode(e.target.value)}
-          placeholder="如：gender"
-          required
-          disabled={!!dictType}
-        />
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">供系统内部使用，创建后不建议修改。</p>
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">用途说明</label>
-        <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="如：用于用户资料页的性别选择" />
-      </div>
+      <Input label="选项组名称" value={name} onChange={(e) => setName(e.target.value)} placeholder="如：性别、用户状态、订单状态" required />
+      <Input
+        label="系统编码"
+        value={typeCode}
+        onChange={(e) => setTypeCode(e.target.value)}
+        placeholder="如：gender"
+        description="供系统内部使用，创建后不建议修改。"
+        required
+        disabled={!!dictType}
+      />
+      <Textarea
+        label="用途说明"
+        value={remark}
+        onChange={(e) => setRemark(e.target.value)}
+        placeholder="如：用于用户资料页的性别选择"
+      />
       <FormCheckbox
         label="启用"
         checked={status}
@@ -74,7 +75,9 @@ function DictTypeForm({
       {errorMessage && <p className="text-sm text-[var(--color-error)]">{errorMessage}</p>}
       <div className="flex justify-end gap-2 mt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>取消</Button>
-        <Button type="submit">{dictType ? '更新' : '创建'}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (dictType ? '更新中...' : '创建中...') : dictType ? '更新' : '创建'}
+        </Button>
       </div>
     </form>
   );
@@ -88,8 +91,8 @@ export function DictTypes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DictType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DictType | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const formError = useFormError();
+  const pageError = useFormError();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-dict-types', page, search],
@@ -102,10 +105,10 @@ export function DictTypes() {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-types'] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDialogOpen(false);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '创建选项组失败')),
+    onError: (error) => formError.captureError(error, '创建选项组失败'),
   });
 
   const updateMutation = useMutation({
@@ -116,10 +119,10 @@ export function DictTypes() {
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDialogOpen(false);
       setEditing(null);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '更新选项组失败')),
+    onError: (error) => formError.captureError(error, '更新选项组失败'),
   });
 
   const toggleStatusMutation = useMutation({
@@ -128,9 +131,9 @@ export function DictTypes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-types'] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '更新选项组状态失败')),
+    onError: (error) => pageError.captureError(error, '更新选项组状态失败'),
   });
 
   const deleteMutation = useMutation({
@@ -139,9 +142,9 @@ export function DictTypes() {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-types'] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDeleteTarget(null);
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '删除选项组失败')),
+    onError: (error) => pageError.captureError(error, '删除选项组失败'),
   });
 
   const handleSubmit = (formData: DictTypeFormValues) => {
@@ -166,23 +169,23 @@ export function DictTypes() {
 
   const openCreate = useCallback(() => {
     setEditing(null);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const openEdit = useCallback((dt: DictType) => {
     setEditing(dt);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const handleToggleStatus = useCallback((dt: DictType) => {
-    setPageError(null);
+    pageError.clearError();
     toggleStatusMutation.mutate({
       id: dt.id,
       status: !dt.status,
     });
-  }, [toggleStatusMutation]);
+  }, [pageError, toggleStatusMutation]);
 
   return (
     <div className="grid gap-6">
@@ -192,9 +195,9 @@ export function DictTypes() {
         actions={<Button onClick={openCreate}>新增选项组</Button>}
       />
 
-      {pageError && (
+      {pageError.error && (
         <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
-          {pageError}
+          {pageError.error}
         </div>
       )}
 
@@ -283,8 +286,9 @@ export function DictTypes() {
         <DictTypeForm
           key={editing?.id ?? 'create'}
           dictType={editing ?? undefined}
-          errorMessage={formError}
+          errorMessage={formError.error}
           onSubmit={handleSubmit}
+          isSubmitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => { setDialogOpen(false); setEditing(null); }}
         />
       </FormDialog>

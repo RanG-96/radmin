@@ -1,8 +1,7 @@
 use crate::error::AppError;
 use crate::middleware::jwt::Claims;
 use crate::middleware::role::AdminRole;
-use crate::model::file::FileResponse;
-use crate::model::user::PaginationParams;
+use crate::model::file::{FileListParams, FileResponse};
 use crate::service::file as file_service;
 use crate::AppState;
 use axum::{
@@ -13,6 +12,34 @@ use axum::{
     Json,
 };
 use uuid::Uuid;
+
+const MAX_UPLOAD_SIZE_BYTES: usize = 10 * 1024 * 1024;
+const ALLOWED_MIME_TYPES: &[&str] = &[
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/csv",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-rar-compressed",
+    "application/vnd.rar",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/ogg",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+];
 
 pub async fn upload(
     State(state): State<AppState>,
@@ -37,6 +64,9 @@ pub async fn upload(
         .await
         .map_err(|e| AppError::Validation(format!("读取文件数据失败: {}", e)))?;
 
+    ensure_file_size_allowed(data.len())?;
+    ensure_mime_type_allowed(&content_type)?;
+
     let id = Uuid::new_v4();
     let ext = file_name.rsplit('.').next().unwrap_or("bin");
     let filename = format!("{}.{}", id, ext);
@@ -50,7 +80,6 @@ pub async fn upload(
         .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!("写入文件失败: {}", e)))?;
 
-    let base_url = format!("http://0.0.0.0:{}", state.config.server_port);
     let response = file_service::upload(
         &state.pool,
         id,
@@ -60,7 +89,6 @@ pub async fn upload(
         data.len() as i64,
         &filepath,
         claims.sub,
-        &base_url,
     )
     .await?;
 
@@ -93,14 +121,14 @@ pub async fn download(
 pub async fn list_files(
     State(state): State<AppState>,
     _admin: AdminRole,
-    Query(params): Query<PaginationParams>,
+    Query(params): Query<FileListParams>,
 ) -> Result<Json<crate::model::file::PaginatedFiles>, AppError> {
-    let base_url = format!("http://0.0.0.0:{}", state.config.server_port);
     let result = file_service::list(
         &state.pool,
         params.page.unwrap_or(1),
         params.per_page.unwrap_or(20),
-        &base_url,
+        params.keyword.as_deref(),
+        params.mime_type.as_deref(),
     )
     .await?;
     Ok(Json(result))
@@ -113,4 +141,23 @@ pub async fn delete_file(
 ) -> Result<Json<serde_json::Value>, AppError> {
     file_service::delete(&state.pool, id).await?;
     Ok(Json(serde_json::json!({ "message": "文件已删除" })))
+}
+
+fn ensure_file_size_allowed(size: usize) -> Result<(), AppError> {
+    if size > MAX_UPLOAD_SIZE_BYTES {
+        return Err(AppError::Validation("文件大小不能超过 10MB".into()));
+    }
+
+    Ok(())
+}
+
+fn ensure_mime_type_allowed(mime_type: &str) -> Result<(), AppError> {
+    if ALLOWED_MIME_TYPES.contains(&mime_type) {
+        return Ok(());
+    }
+
+    Err(AppError::Validation(format!(
+        "暂不支持该文件类型：{}",
+        mime_type
+    )))
 }

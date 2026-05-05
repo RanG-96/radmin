@@ -1,4 +1,5 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
+import { FormField } from './FormField';
 
 function Checkbox({ className = '', ...props }: CheckboxPrimitive.CheckboxProps) {
   return (
@@ -21,14 +22,18 @@ interface FormCheckboxProps {
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
   id?: string;
+  error?: string | null;
+  description?: string;
 }
 
-function FormCheckbox({ label, id, ...props }: FormCheckboxProps) {
+function FormCheckbox({ label, id, error, description, ...props }: FormCheckboxProps) {
   return (
-    <label htmlFor={id} className="flex items-center gap-2 text-sm cursor-pointer">
-      <Checkbox id={id} {...props} />
-      {label}
-    </label>
+    <FormField error={error} hint={description}>
+      <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
+        <Checkbox id={id} {...props} />
+        {label}
+      </label>
+    </FormField>
   );
 }
 

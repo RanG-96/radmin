@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { dictApi } from '../../lib/api';
+import { dictApi } from '../../lib/api/dict';
 import { Select, SelectTrigger, SelectContent, SelectItem } from './Select';
 import * as SelectPrimitive from '@radix-ui/react-select';
 

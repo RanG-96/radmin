@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { settingsApi } from '../lib/api';
+import { settingsApi } from '../lib/api/settings';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Textarea } from '../components/ui/Textarea';
+import { PageHeader } from '../components/crud/PageHeader';
+import { useFormError } from '../hooks/useFormError';
 
 export function Settings() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const saveError = useFormError();
 
   const { isLoading } = useQuery({
     queryKey: ['settings'],
@@ -23,9 +27,11 @@ export function Settings() {
     mutationFn: () => settingsApi.update(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      saveError.clearError();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
+    onError: (error) => saveError.captureError(error, '保存失败'),
   });
 
   const handleChange = (key: string, value: string) => {
@@ -45,29 +51,30 @@ export function Settings() {
 
   return (
     <div className="grid gap-6">
-      <h2 className="text-2xl font-semibold text-[var(--color-text)]">系统设置</h2>
+      <PageHeader
+        title="系统设置"
+        description="集中维护站点名称、说明和页脚等基础展示配置。"
+      />
       <div className="max-w-2xl rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-6">
         <div className="grid gap-4">
           {fields.map((field) => (
-            <div key={field.key}>
-              <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">
-                {field.label}
-              </label>
-              {field.type === 'textarea' ? (
-                <textarea
-                  className="flex min-h-[80px] w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-1"
-                  value={form[field.key] ?? ''}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                />
-              ) : (
-                <Input
-                  value={form[field.key] ?? ''}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                />
-              )}
-            </div>
+            field.type === 'textarea' ? (
+              <Textarea
+                key={field.key}
+                label={field.label}
+                value={form[field.key] ?? ''}
+                onChange={(e) => handleChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
+              />
+            ) : (
+              <Input
+                key={field.key}
+                label={field.label}
+                value={form[field.key] ?? ''}
+                onChange={(e) => handleChange(field.key, e.target.value)}
+                placeholder={field.placeholder}
+              />
+            )
           ))}
         </div>
         <div className="mt-6 flex items-center gap-3">
@@ -75,7 +82,7 @@ export function Settings() {
             {updateMutation.isPending ? '保存中...' : '保存设置'}
           </Button>
           {saved && <span className="text-sm text-green-600">保存成功</span>}
-          {updateMutation.isError && <span className="text-sm text-[var(--color-error)]">保存失败</span>}
+          {saveError.error && <span className="text-sm text-[var(--color-error)]">{saveError.error}</span>}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { operationLogsApi } from '../lib/api';
+import { operationLogsApi } from '../lib/api/operation-logs';
 import { Input } from '../components/ui/Input';
 import { FormSelect } from '../components/ui/Select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';

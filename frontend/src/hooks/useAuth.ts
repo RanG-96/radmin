@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authApi, userApi, type User, type LoginInput, type RegisterInput } from '../lib/api';
+import { authApi } from '../lib/api/auth';
+import { userApi } from '../lib/api/users';
+import type { LoginInput, RegisterInput } from '../lib/types/auth';
+import type { User } from '../lib/types/user';
 
 export function useAuth() {
+  const token = localStorage.getItem('token');
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('user');
     return stored ? JSON.parse(stored) : null;
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(token));
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     if (!token) {
-      setLoading(false);
       return;
     }
     userApi.me()
@@ -27,7 +29,7 @@ export function useAuth() {
         setUser(null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   const login = useCallback(async (input: LoginInput) => {
     const res = await authApi.login(input);

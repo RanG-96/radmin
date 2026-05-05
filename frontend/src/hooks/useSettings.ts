@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { settingsApi, type Setting } from '../lib/api';
+import { settingsApi } from '../lib/api/settings';
+import type { Setting } from '../lib/types/setting';
 
 export function useSettings() {
   const { data, isLoading } = useQuery({

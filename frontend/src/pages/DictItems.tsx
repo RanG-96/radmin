@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dictApi, type DictItem, type CreateDictItemInput, type UpdateDictItemInput } from '../lib/api';
-import { getApiErrorMessage } from '../lib/error';
+import { dictApi } from '../lib/api/dict';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormCheckbox } from '../components/ui/Checkbox';
+import { Textarea } from '../components/ui/Textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/AlertDialog';
 import { EmptyState, LoadingState } from '../components/ui/EmptyState';
@@ -14,6 +14,8 @@ import { DataTable } from '../components/crud/DataTable';
 import { RowActions } from '../components/crud/RowActions';
 import { FormDialog } from '../components/crud/FormDialog';
 import { StatusBadge } from '../components/crud/StatusBadge';
+import { useFormError } from '../hooks/useFormError';
+import type { CreateDictItemInput, DictItem, UpdateDictItemInput } from '../lib/types/dict';
 
 interface DictItemFormValues {
   dict_type_id: string;
@@ -30,12 +32,14 @@ function DictItemForm({
   errorMessage,
   onSubmit,
   onCancel,
+  isSubmitting,
 }: {
   item?: DictItem;
   dictTypeId: string;
   errorMessage?: string | null;
   onSubmit: (data: DictItemFormValues) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }) {
   const [label, setLabel] = useState(item?.label ?? '');
   const [value, setValue] = useState(item?.value ?? '');
@@ -57,23 +61,22 @@ function DictItemForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">显示名称</label>
-        <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="如：男、已启用、待支付" required />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">实际值</label>
-        <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="如：male、active、pending" required />
-        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">系统保存和接口返回时使用这个值。</p>
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">排序</label>
-        <Input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-[var(--color-text)]">补充说明</label>
-        <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="可选，用来补充说明该选项的适用场景" />
-      </div>
+      <Input label="显示名称" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="如：男、已启用、待支付" required />
+      <Input
+        label="实际值"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="如：male、active、pending"
+        description="系统保存和接口返回时使用这个值。"
+        required
+      />
+      <Input label="排序" type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
+      <Textarea
+        label="补充说明"
+        value={remark}
+        onChange={(e) => setRemark(e.target.value)}
+        placeholder="可选，用来补充说明该选项的适用场景"
+      />
       <FormCheckbox
         label="启用"
         checked={status}
@@ -82,7 +85,9 @@ function DictItemForm({
       {errorMessage && <p className="text-sm text-[var(--color-error)]">{errorMessage}</p>}
       <div className="flex justify-end gap-2 mt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>取消</Button>
-        <Button type="submit">{item ? '更新' : '创建'}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (item ? '更新中...' : '创建中...') : item ? '更新' : '创建'}
+        </Button>
       </div>
     </form>
   );
@@ -95,8 +100,8 @@ export function DictItems() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DictItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DictItem | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const formError = useFormError();
+  const pageError = useFormError();
 
   const { data: dictType, isLoading: isTypeLoading } = useQuery({
     queryKey: ['admin-dict-type', typeId],
@@ -118,10 +123,10 @@ export function DictItems() {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-types'] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDialogOpen(false);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '创建可选项失败')),
+    onError: (error) => formError.captureError(error, '创建可选项失败'),
   });
 
   const updateMutation = useMutation({
@@ -132,10 +137,10 @@ export function DictItems() {
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDialogOpen(false);
       setEditing(null);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '更新可选项失败')),
+    onError: (error) => formError.captureError(error, '更新可选项失败'),
   });
 
   const toggleStatusMutation = useMutation({
@@ -144,9 +149,9 @@ export function DictItems() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-items', typeId] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '更新可选项状态失败')),
+    onError: (error) => pageError.captureError(error, '更新可选项状态失败'),
   });
 
   const deleteMutation = useMutation({
@@ -157,9 +162,9 @@ export function DictItems() {
       queryClient.invalidateQueries({ queryKey: ['admin-dict-types'] });
       queryClient.invalidateQueries({ queryKey: ['dict'] });
       setDeleteTarget(null);
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '删除可选项失败')),
+    onError: (error) => pageError.captureError(error, '删除可选项失败'),
   });
 
   const handleSubmit = (formData: DictItemFormValues) => {
@@ -187,23 +192,23 @@ export function DictItems() {
 
   const openCreate = useCallback(() => {
     setEditing(null);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const openEdit = useCallback((item: DictItem) => {
     setEditing(item);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const handleToggleStatus = useCallback((item: DictItem) => {
-    setPageError(null);
+    pageError.clearError();
     toggleStatusMutation.mutate({
       id: item.id,
       status: !item.status,
     });
-  }, [toggleStatusMutation]);
+  }, [pageError, toggleStatusMutation]);
 
   return (
     <div className="grid gap-6">
@@ -229,9 +234,9 @@ export function DictItems() {
         />
       </div>
 
-      {pageError && (
+      {pageError.error && (
         <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
-          {pageError}
+          {pageError.error}
         </div>
       )}
 
@@ -287,8 +292,9 @@ export function DictItems() {
           key={editing?.id ?? 'create'}
           item={editing ?? undefined}
           dictTypeId={typeId!}
-          errorMessage={formError}
+          errorMessage={formError.error}
           onSubmit={handleSubmit}
+          isSubmitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => { setDialogOpen(false); setEditing(null); }}
         />
       </FormDialog>

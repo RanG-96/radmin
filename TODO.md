@@ -28,14 +28,23 @@
 - 收尾清理方案确认：采用“最小运行时清理 + 精确暂存提交”
 - 轻量脚手架可扩展性重构方案确认：采用“CRUD 组合组件 -> 统一表单 -> API 分模块 -> 后端路由拆分”的渐进式顺序
 - 轻量脚手架可扩展性重构设计文档与实施计划已补齐
+- CRUD 组合组件落地：已补 `PageHeader`、`FilterBar`、`DataTable`、`RowActions`、`FormDialog`、`StatusBadge`
+- 统一表单方案落地：已补 `Textarea`、字段容器、错误映射和提交态收敛
+- 前端 API 分模块：已拆为 `http.ts + types/ + api/`，并完成页面 import 迁移
+- 后端路由拆分：已将 `backend/src/main.rs` 的路由注册按领域迁到 `backend/src/router/`
+- 前端全量校验：`yarn lint` 与 `yarn build` 已通过
+- 后端编译校验：`cargo check` 已通过
+- Docker compose 配置校验：`docker compose config` 已通过，镜像前缀展开正确
+- 迁移风险检查：本地数据库已确认不存在同选项组下重复 `value` 的历史数据
+- 本地 API 运行态冒烟：`health`、登录、`users`、`settings`、`dict`、`files`、`notifications`、`operation-logs` 已验证通过
+- 轻量附件库增强方案确认：采用“搜索 + 筛选 + 预览 + 复制链接 + 上传约束”的轻量增强方式
+- 轻量附件库增强设计文档与实施计划已补齐
+- 轻量附件库增强：已补文件搜索筛选、上传校验、预览和复制链接能力
+- 轻量附件库接口回归：新实例已验证列表筛选、合法上传、非法类型拦截和删除能力
 
 ## ⏳ 待完成
 
-- 收尾清理与版本提交：统一运行时旧术语、去除冗余字段并完成一次提交
 - 选项配置人工回归：在真实页面确认启停、删除门禁和错误提示符合预期
-- 迁移风险检查：上线前确认现网不存在同选项组下重复 `value` 的历史数据
-- Docker 整栈构建验证：使用 `IMAGE_REGISTRY=docker.1ms.run/library/` 执行 `docker compose up --build`
-- CRUD 组合组件落地：补 `PageHeader`、`FilterBar`、`DataTable`、`RowActions`、`FormDialog`、`StatusBadge`
-- 统一表单方案落地：补齐 `Textarea`、字段容器、错误映射和提交态收敛
-- 前端 API 分模块：将 `frontend/src/lib/api.ts` 拆成 `http.ts + types/ + api/`
-- 后端路由拆分：将 `backend/src/main.rs` 的路由注册按领域迁到 `backend/src/router/`
+- 页面人工回归：确认用户、设置、文件、通知、仪表盘与操作日志页在运行态行为正常
+- Docker 整栈构建验证：待本机 Docker daemon 可用后执行 `IMAGE_REGISTRY=docker.1ms.run/library/ docker compose up --build -d`
+- 版本提交：确认人工回归结果后整理暂存并提交本轮轻量脚手架重构

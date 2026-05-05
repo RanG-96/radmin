@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi, type User, type AdminCreateUserInput, type UpdateUserInput } from '../lib/api';
-import { getApiErrorMessage } from '../lib/error';
+import { adminApi } from '../lib/api/users';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { FormSelect } from '../components/ui/Select';
@@ -16,6 +15,8 @@ import { DataTable } from '../components/crud/DataTable';
 import { RowActions } from '../components/crud/RowActions';
 import { FormDialog } from '../components/crud/FormDialog';
 import { StatusBadge } from '../components/crud/StatusBadge';
+import { useFormError } from '../hooks/useFormError';
+import type { AdminCreateUserInput, UpdateUserInput, User } from '../lib/types/user';
 
 const roleOptions = [
   { value: 'user', label: '普通用户' },
@@ -30,11 +31,12 @@ interface UserFormValues {
   is_active?: boolean;
 }
 
-function UserForm({ user, errorMessage, onSubmit, onCancel }: {
+function UserForm({ user, errorMessage, onSubmit, onCancel, isSubmitting }: {
   user?: User;
   errorMessage?: string | null;
   onSubmit: (data: UserFormValues) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }) {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -55,8 +57,18 @@ function UserForm({ user, errorMessage, onSubmit, onCancel }: {
     <form onSubmit={handleSubmit} className="grid gap-4">
       <Input label="用户名" value={username} onChange={(e) => setUsername(e.target.value)} required />
       <Input label="邮箱" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      {!user && <Input label="密码" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />}
-      <FormSelect label="角色" value={role} onValueChange={setRole} options={roleOptions} />
+      {!user && (
+        <Input
+          label="密码"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          description="至少 6 个字符"
+          required
+          minLength={6}
+        />
+      )}
+      <FormSelect label="角色" value={role} onValueChange={setRole} options={roleOptions} required />
       {user && (
         <FormCheckbox
           label="启用"
@@ -67,7 +79,9 @@ function UserForm({ user, errorMessage, onSubmit, onCancel }: {
       {errorMessage && <p className="text-sm text-[var(--color-error)]">{errorMessage}</p>}
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>取消</Button>
-        <Button type="submit">{user ? '保存' : '创建'}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (user ? '保存中...' : '创建中...') : user ? '保存' : '创建'}
+        </Button>
       </div>
     </form>
   );
@@ -80,8 +94,8 @@ export function Users() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [pageError, setPageError] = useState<string | null>(null);
+  const formError = useFormError();
+  const pageError = useFormError();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', page, search],
@@ -93,10 +107,10 @@ export function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setDialogOpen(false);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '创建用户失败')),
+    onError: (error) => formError.captureError(error, '创建用户失败'),
   });
 
   const updateMutation = useMutation({
@@ -105,10 +119,10 @@ export function Users() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setDialogOpen(false);
       setEditingUser(null);
-      setFormError(null);
-      setPageError(null);
+      formError.clearError();
+      pageError.clearError();
     },
-    onError: (error) => setFormError(getApiErrorMessage(error, '更新用户失败')),
+    onError: (error) => formError.captureError(error, '更新用户失败'),
   });
 
   const toggleStatusMutation = useMutation({
@@ -116,18 +130,18 @@ export function Users() {
       adminApi.updateUser(id, { is_active }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '更新用户状态失败')),
+    onError: (error) => pageError.captureError(error, '更新用户状态失败'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminApi.deleteUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      setPageError(null);
+      pageError.clearError();
     },
-    onError: (error) => setPageError(getApiErrorMessage(error, '删除用户失败')),
+    onError: (error) => pageError.captureError(error, '删除用户失败'),
   });
 
   const handleCreate = (data: UserFormValues) => createMutation.mutate(data as AdminCreateUserInput);
@@ -144,20 +158,20 @@ export function Users() {
 
   const openCreate = useCallback(() => {
     setEditingUser(null);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const openEdit = useCallback((user: User) => {
     setEditingUser(user);
-    setFormError(null);
+    formError.clearError();
     setDialogOpen(true);
-  }, []);
+  }, [formError]);
 
   const handleToggleStatus = useCallback((user: User) => {
-    setPageError(null);
+    pageError.clearError();
     toggleStatusMutation.mutate({ id: user.id, is_active: !user.is_active });
-  }, [toggleStatusMutation]);
+  }, [pageError, toggleStatusMutation]);
 
   return (
     <div className="grid gap-6">
@@ -167,9 +181,9 @@ export function Users() {
         actions={<Button onClick={openCreate}>新增用户</Button>}
       />
 
-      {pageError && (
+      {pageError.error && (
         <div className="rounded-md border border-[var(--color-error)]/30 bg-[var(--color-error)]/10 px-4 py-3 text-sm text-[var(--color-error)]">
-          {pageError}
+          {pageError.error}
         </div>
       )}
 
@@ -259,8 +273,9 @@ export function Users() {
         <UserForm
           key={editingUser?.id ?? 'create'}
           user={editingUser || undefined}
-          errorMessage={formError}
+          errorMessage={formError.error}
           onSubmit={editingUser ? handleUpdate : handleCreate}
+          isSubmitting={createMutation.isPending || updateMutation.isPending}
           onCancel={() => { setDialogOpen(false); setEditingUser(null); }}
         />
       </FormDialog>

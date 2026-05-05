@@ -1,5 +1,5 @@
 import * as SelectPrimitive from '@radix-ui/react-select';
-import * as LabelPrimitive from '@radix-ui/react-label';
+import { FormField } from './FormField';
 
 function Select({ children, ...props }: SelectPrimitive.SelectProps) {
   return <SelectPrimitive.Root {...props}>{children}</SelectPrimitive.Root>;
@@ -68,23 +68,37 @@ function SelectGroup({ ...props }: SelectPrimitive.SelectGroupProps) {
 
 interface FormSelectProps {
   label?: string;
-  error?: string;
+  error?: string | null;
+  description?: string;
   placeholder?: string;
   options: { value: string; label: string }[];
   value?: string;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
   id?: string;
+  required?: boolean;
 }
 
-function FormSelect({ label, error, placeholder = 'Select...', options, value, onValueChange, disabled, id }: FormSelectProps) {
+function FormSelect({
+  label,
+  error,
+  description,
+  placeholder = 'Select...',
+  options,
+  value,
+  onValueChange,
+  disabled,
+  id,
+  required,
+}: FormSelectProps) {
   return (
-    <div className="grid gap-1.5">
-      {label && (
-        <LabelPrimitive.Root htmlFor={id} className="text-sm font-medium text-[var(--color-text)]">
-          {label}
-        </LabelPrimitive.Root>
-      )}
+    <FormField
+      label={label}
+      htmlFor={id}
+      hint={description}
+      error={error}
+      required={required}
+    >
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger id={id} className={error ? 'border-[var(--color-error)]' : ''}>
           <SelectPrimitive.Value placeholder={placeholder} />
@@ -97,8 +111,7 @@ function FormSelect({ label, error, placeholder = 'Select...', options, value, o
           ))}
         </SelectContent>
       </Select>
-      {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
-    </div>
+    </FormField>
   );
 }
 

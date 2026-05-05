@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi, type Notification } from '../lib/api';
+import { notificationsApi } from '../lib/api/notifications';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/ui/Pagination';
+import type { Notification } from '../lib/types/notification';
 
 export function Notifications() {
   const queryClient = useQueryClient();
